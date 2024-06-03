@@ -1,0 +1,5 @@
+/venv
+/test
+/.ipynb_checkpoints
+/publisher_mapping.json
+/author_mapping.json
