@@ -3,9 +3,9 @@ import numpy as np
 
 class LinearRegression:
     
-    def __init__(self, lr=0.001, n_iters=1000):
+    def __init__(self, lr=0.001, num_iterations=1000):
         self.lr = lr
-        self.n_iters = n_iters
+        self.num_iterations = num_iterations
         self.weights = None
         self.w0 = None
 
@@ -14,7 +14,7 @@ class LinearRegression:
         self.weights = np.zeros(n_features)
         self.w0 = 0
 
-        for _ in range(self.n_iters):
+        for _ in range(self.num_iterations):
             y_pred = np.dot(X, self.weights) + self.w0
 
             dw = (1/n_samples) * np.dot(X.T, (y_pred-y)) * 2

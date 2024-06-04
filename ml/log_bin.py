@@ -23,7 +23,7 @@ class LogisticRegression():
             dw = (1/n_samples) * np.dot(X.T, (np.array(y_log_pred) - y))
             dw0 = (1/n_samples) * np.sum(y_log_pred-y)
 
-            self.weights = self.weights - self.lr*dw
+            self.weights = self.weights - self.lr*dw - self.weights * self.lr * 0.1 * (1/n_samples)
             self.w0 = self.w0 - self.lr*dw0
 
     def predict(self, X):

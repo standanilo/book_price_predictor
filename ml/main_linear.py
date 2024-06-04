@@ -184,7 +184,7 @@ for item in cat.values:
     cat_dict[item[0]].append(item[1])
     
 
-lin = LinearRegression(lr=0.01, n_iters=10000)
+lin = LinearRegression(lr=0.01, num_iterations=10000)
 
 # app window
 def change_theme_event(new_theme: str):
