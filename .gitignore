@@ -4,3 +4,5 @@
 /publisher_mapping.json
 /author_mapping.json
 ml/__pycache__
+ml/main_linear.py
+ml/main_log.py

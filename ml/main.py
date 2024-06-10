@@ -2,6 +2,7 @@ import customtkinter as ctk
 from tkinter import messagebox
 import pandas as pd
 from lin import train_test_split
+from lin import LinearRegression
 from log_multinom import LogisticRegression
 from scaler import StandardScaler
 import matplotlib.pyplot as plt
@@ -95,32 +96,51 @@ def submit():
     d['area'] = area
     # d['description_length'] = description_length
     # d['price'] = 0
-    d['price_range'] = 0
-    df = pd.DataFrame(d, index=[0])
-    new_data_frame = pd.DataFrame(scaler.transform(df), columns=df.columns, index=df.index)
-    # new_data_frame = df
-    new_data_frame.drop('price_range', axis=1, inplace=True)
-    if int(entries[-1].get()) == 1:
-        predictions = log_multinom.predict(new_data_frame)
-    else:
-        predictions = log_bin.predict(new_data_frame)
+    if int(entries[-1].get()) == 2:
+        d['price'] = 0
+        df = pd.DataFrame(d, index=[0])
+        new_data_frame = pd.DataFrame(scaler_lin.transform(df), columns=df.columns, index=df.index)
+        new_data_frame.drop('price', axis=1, inplace=True)
+        predictions = lin.predict(new_data_frame)
 
-    y_t = pd.DataFrame(predictions, columns=['price_range'])
-    result = pd.concat([new_data_frame.reset_index(drop=True), y_t], axis=1)
+        y_t = pd.DataFrame(predictions, columns=['price'])
+        result = pd.concat([new_data_frame.reset_index(drop=True), y_t], axis=1)
 
-    predictions_unscaled = scaler.inverse_transform(result)
+        predictions_unscaled = scaler_lin.inverse_transform(result)
 
-    predictions_df = pd.DataFrame(predictions_unscaled, columns=result.columns)
-    # predictions_df = pd.DataFrame(result, columns=result.columns)
+        predictions_df = pd.DataFrame(predictions_unscaled, columns=result.columns)
 
-    predictions_df['price_range'] = predictions_df['price_range'].apply(lambda x: '{:.2f}'.format(x))
-    res_index = price_labels.index(int(float(predictions_df.iloc[0]['price_range'])))
-    if checkbox_var.get() == 'on':
-        plot(predictions_df.iloc[0])
-    final_label.configure(text='Result: ' +  price_labels_range[res_index])
+        predictions_df['price'] = predictions_df['price'].apply(lambda x: '{:.2f}'.format(x))
+        if checkbox_var.get() == 'on':
+            plot_lin(predictions_df.iloc[0])
+        final_label.configure(text='Result: ' +  predictions_df.iloc[0]['price'])
+    else:    
+        d['price_range'] = 0
+        df = pd.DataFrame(d, index=[0])
+        new_data_frame = pd.DataFrame(scaler.transform(df), columns=df.columns, index=df.index)
+        # new_data_frame = df
+        new_data_frame.drop('price_range', axis=1, inplace=True)
+        if int(entries[-1].get()) == 0:
+            predictions = log_bin.predict(new_data_frame)
+        else:
+            predictions = log_multinom.predict(new_data_frame)
+
+        y_t = pd.DataFrame(predictions, columns=['price_range'])
+        result = pd.concat([new_data_frame.reset_index(drop=True), y_t], axis=1)
+
+        predictions_unscaled = scaler.inverse_transform(result)
+
+        predictions_df = pd.DataFrame(predictions_unscaled, columns=result.columns)
+        # predictions_df = pd.DataFrame(result, columns=result.columns)
+
+        predictions_df['price_range'] = predictions_df['price_range'].apply(lambda x: '{:.2f}'.format(x))
+        res_index = price_labels.index(int(float(predictions_df.iloc[0]['price_range'])))
+        if checkbox_var.get() == 'on':
+            plot_log(predictions_df.iloc[0])
+        final_label.configure(text='Result: ' +  price_labels_range[res_index])
            
-def plot(dot):
-    data_to_plot = data
+def plot_log(dot):
+    data_to_plot = data_log
     df_mapped = data_to_plot['main_category'].map(categories_dict)
     data_to_plot['category'] = df_mapped
     dot['category'] = categories_dict[int(dot['main_category'])]
@@ -152,11 +172,47 @@ def plot(dot):
     plt.rcParams.update({'font.size': 14})
     plt.legend(title='Povez')
 
+    plt.show()   
+    
+def plot_lin(dot):
+    data_to_plot = data_lin
+    df_mapped = data_to_plot['main_category'].map(categories_dict)
+    data_to_plot['category'] = df_mapped
+    dot['category'] = categories_dict[int(dot['main_category'])]
+    data_to_plot = data_to_plot.drop(['subcategory'], axis=1)
+    dot = dot.drop(['subcategory'])
+
+    marker_dict = {
+        1: ('s', 'Tvrd'),
+        0: ('^', 'Broš')
+    }
+
+    plt.figure(figsize=(15, 8))
+    for value, (marker, label) in marker_dict.items():
+        subset = data_to_plot[data_to_plot['binding_type'] == value]
+        subset['price'] = subset['price'].astype(float)
+        scatter = plt.scatter(subset['category'], subset['price'].astype(float), c=subset['area'], cmap='viridis', s=20, alpha=0.75, marker=marker, label=label)
+
+    dot['price'] = float(dot['price'])
+    plt.scatter(dot['category'], dot['price'], s=30, color='red', marker='o')
+    cbar = plt.colorbar(scatter)
+    cbar.set_label('Broj stranica x Format')
+
+    plt.rcParams.update({'font.size': 14})
+    plt.xlabel('Kategorija', fontsize=14)
+    plt.ylabel('Cena', fontsize=14)
+    plt.subplots_adjust(bottom=0.35)
+    plt.title('Grafik')
+    plt.xticks(rotation=45)
+    plt.legend(title='Povez')
+
     plt.show()
+
   
 def background_task():
-    log_multinom.fit(X_train,y_train, class_labels=scaled_labels)
-    log_bin.fit(X_train,y_train)
+    log_multinom.fit(X_train_log, y_train_log, class_labels=scaled_labels)
+    log_bin.fit(X_train_log,y_train_log)
+    lin.fit(X_train, y_train)
 
     submit_button.configure(state='normal')
     
@@ -168,17 +224,26 @@ price_ranges = [(0, 500), (500, 1500), (1500, 3000), (3000, 5000), (5000, 10000)
 price_labels = [0, 500, 1500, 3000, 5000, 10000, 15000]
 price_labels_range = ['< 500', '500-1500', '1500-3000', '3000-5000', '5000-10000', '10000-15000', '> 15000']
 
-data['price_range'] = pd.cut(data['price'], bins=[x[0] for x in price_ranges] + [float('inf')], labels=price_labels, right=False)
-scaler = StandardScaler()
-data.drop(['price'], axis=1, inplace=True)
-data['price_range'] = data['price_range'].astype(float)
-new_df = pd.DataFrame(scaler.fit_transform(data), columns=data.columns, index=data.index)
-scaled_labels = new_df['price_range'].unique()
-scaled_labels.sort()
-X = new_df.drop(['price_range'], axis=1)
-y = new_df['price_range']
+data_lin = data.copy()
+data_log = data.copy()
+scaler_lin = StandardScaler()
+new_df = pd.DataFrame(scaler_lin.fit_transform(data_lin), columns=data_lin.columns, index=data_lin.index)
+X = new_df.drop('price', axis=1)
+y = new_df['price']
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42, test_size=0)
+
+data_log['price_range'] = pd.cut(data_log['price'], bins=[x[0] for x in price_ranges] + [float('inf')], labels=price_labels, right=False)
+scaler = StandardScaler()
+data_log.drop(['price'], axis=1, inplace=True)
+data_log['price_range'] = data_log['price_range'].astype(float)
+new_df = pd.DataFrame(scaler.fit_transform(data_log), columns=data_log.columns, index=data_log.index)
+scaled_labels = new_df['price_range'].unique()
+scaled_labels.sort()
+X_log = new_df.drop(['price_range'], axis=1)
+y_log = new_df['price_range']
+
+X_train_log, X_test_log, y_train_log, y_test_log = train_test_split(X_log, y_log, random_state=42, test_size=0)
 
 categories = pd.read_json('category_mapping.json')
 subcategories = pd.read_json('category2_mapping.json')
@@ -200,6 +265,7 @@ for item in cat.values:
         cat_dict[item[0]] = []
     cat_dict[item[0]].append(item[1])
 
+lin = LinearRegression(lr=0.01, num_iterations=10000)
 log_multinom = LogisticRegression(lr=0.1, num_iterations=3000)
 log_bin = OneVsOneLogisticRegression()
 
@@ -213,12 +279,13 @@ ctk.set_default_color_theme('green')
 root = ctk.CTk()
 root.title('Book Price Prediction')
 root.resizable(False, False)
-root.geometry('420x650')
+root.geometry('450x650')
 
 frame_options = ctk.CTkFrame(root, height=50, corner_radius=0)
 frame_options.pack(fill='both')
 frame_options.grid_columnconfigure(1, weight=1)
 frame_options.grid_columnconfigure(2, weight=1)
+frame_options.grid_columnconfigure(3, weight=1)
 theme_label = ctk.CTkLabel(frame_options, text='Theme:', anchor='w', justify='left')
 theme_label.grid(row=1, column=0, padx=20, pady=(10, 0), sticky='NSEW')
 theme_optionmenu = ctk.CTkOptionMenu(frame_options, values=['Dark', 'Light', 'System'], command=change_theme_event)
@@ -227,10 +294,12 @@ theme_optionmenu.grid(row=1, column=1, padx=20, pady=(10, 10), sticky='NSEW')
 label = ctk.CTkLabel(frame_options, text='Type:')
 label.grid(row=2, column=0, padx=5, pady=5)
 type_radio = ctk.StringVar()
-entry_multinom = ctk.CTkRadioButton(frame_options, text='Multinomial', variable=type_radio, value='1')
+entry_multinom = ctk.CTkRadioButton(frame_options, text='Log Multinomial', variable=type_radio, value='1')
 entry_multinom.grid(row=2, column=1, padx=5, pady=5, sticky='NSEW')
-entry_bin = ctk.CTkRadioButton(frame_options, text='One VS One', variable=type_radio, value='0')
+entry_bin = ctk.CTkRadioButton(frame_options, text='Log OVO', variable=type_radio, value='0')
 entry_bin.grid(row=2, column=2, padx=5, pady=5, sticky='NSEW')
+entry_linear = ctk.CTkRadioButton(frame_options, text='Linear', variable=type_radio, value='2')
+entry_linear.grid(row=2, column=3, padx=5, pady=5, sticky='NSEW')
 
 frame = ctk.CTkFrame(root)
 frame.pack(padx=10, pady=10, fill='both', expand=True, anchor='w')
