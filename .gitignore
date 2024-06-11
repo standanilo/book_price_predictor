@@ -4,5 +4,6 @@
 /publisher_mapping.json
 /author_mapping.json
 ml/__pycache__
+ml/.ipynb_checkpoints
 ml/main_linear.py
 ml/main_log.py
